@@ -19,7 +19,7 @@ import {
   MenuItem,
   ClickAwayListener,
   Divider,
-  Grid, // Grid V2 を使う想定
+  Grid,
   Alert,
   IconButton,
   Card,
@@ -31,7 +31,8 @@ import {
   ListItemIcon,
   ListItemText,
   Menu,
-  Tooltip
+  Tooltip,
+  Link
 } from '@mui/material';
 import ClearIcon from '@mui/icons-material/Clear';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
@@ -140,6 +141,47 @@ const availableModels = [
   { id: "gemini-2.5-pro-exp-03-25", name: "Gemini 2.5 Pro (Experimental)" },
 ];
 
+// --- ReactMarkdown用のMUIコンポーネントマッピング ---
+const markdownComponents = {
+  p: (props) => <Typography variant="body1" gutterBottom {...props} />,
+  h1: (props) => <Typography variant="h4" gutterBottom {...props} />,
+  h2: (props) => <Typography variant="h5" gutterBottom {...props} />,
+  h3: (props) => <Typography variant="h6" gutterBottom {...props} />,
+  h4: (props) => <Typography variant="subtitle1" gutterBottom {...props} />,
+  h5: (props) => <Typography variant="subtitle2" gutterBottom {...props} />,
+  h6: (props) => <Typography variant="caption" display="block" gutterBottom {...props} />,
+  ul: (props) => <List dense sx={{ paddingLeft: 2, listStyleType: 'disc', pl: 4 }} {...props} />, // デフォルトの黒丸
+  ol: (props) => <List dense component="ol" sx={{ paddingLeft: 2, listStyleType: 'decimal', pl: 4 }} {...props} />, // 番号付きリスト
+  li: (props) => (
+    // ListItemのデフォルトスタイルを無効化し、リストマーカーを表示させる
+    <Typography component="li" sx={{ display: 'list-item', paddingLeft: 0, paddingY: 0.2, listStylePosition: 'outside' }} {...props} />
+  ),
+  a: (props) => <Link {...props} />,
+  strong: (props) => <Typography component="span" sx={{ fontWeight: 'bold' }} {...props} />,
+  em: (props) => <Typography component="span" sx={{ fontStyle: 'italic' }} {...props} />,
+  // テーブル (remark-gfmが必要)
+  table: (props) => <TableContainer component={Paper} sx={{ my: 1}}><Table size="small" {...props} /></TableContainer>,
+  thead: (props) => <TableHead {...props} />,
+  tbody: (props) => <TableBody {...props} />,
+  tr: (props) => <TableRow {...props} />,
+  th: (props) => <TableCell sx={{ fontWeight: 'bold' }} {...props} />,
+  td: (props) => <TableCell {...props} />,
+  code: ({node, inline, className, children, ...props}) => {
+    const match = /language-(\w+)/.exec(className || '')
+    return !inline ? ( // ブロックコード
+      <Box sx={{ my: 1, p: 1.5, bgcolor: 'grey.100', borderRadius: 1, overflowX: 'auto', fontFamily: 'monospace', fontSize: '0.875rem' }}>
+        <pre style={{ margin: 0 }}><code className={className} {...props}>{children}</code></pre>
+      </Box>
+    ) : ( // インラインコード
+      <Typography component="code" sx={{ px: 0.5, py: 0.2, bgcolor: 'grey.100', borderRadius: 0.5, fontFamily: 'monospace', fontSize: '0.875rem' }} {...props}>
+        {children}
+      </Typography>
+    )
+  },
+  hr: (props) => <Divider sx={{ my: 2 }} {...props} />,
+  blockquote: (props) => <Box component="blockquote" sx={{ borderLeft: 4, borderColor: 'divider', pl: 2, my: 1, fontStyle: 'italic', color: 'text.secondary' }} {...props} />,
+};
+// --- マッピング定義ここまで ---
 
 function App() {
   const [apiKey, setApiKey] = useState('');
@@ -507,14 +549,28 @@ function App() {
 
     try {
       const conversationText = results.map(row => `${row.displaySpeaker}: ${row.text}`).join('\n');
-      const summaryPrompt = `以下の会話を簡潔に要約し、Markdown形式で出力してください:\n\n\`\`\`\n${conversationText}\n\`\`\``;
+      // プロンプトを改善：より詳細なMarkdown形式を期待する
+      const summaryPrompt = `以下の会話を簡潔に要約し、見出し、箇条書き、太字などを使用して分かりやすくMarkdown形式で出力してください:\n\n\`\`\`\n${conversationText}\n\`\`\``;
 
       const genAI = new GoogleGenerativeAI(apiKey);
       const model = genAI.getGenerativeModel({ model: selectedModel });
       const result = await model.generateContent(summaryPrompt);
       const response = result.response;
-      const summaryText = response.text();
-      setSummary(summaryText);
+      let summaryText = response.text();
+
+       // 応答がMarkdownブロックで囲まれている場合、中身だけを取り出す
+       const markdownBlockMatch = summaryText.match(/^```markdown\s*([\s\S]*?)\s*```$/);
+       if (markdownBlockMatch) {
+         summaryText = markdownBlockMatch[1];
+       } else {
+         // ``` のみで囲まれている場合も考慮
+         const codeBlockMatch = summaryText.match(/^```\s*([\s\S]*?)\s*```$/);
+         if (codeBlockMatch) {
+           summaryText = codeBlockMatch[1];
+         }
+       }
+
+      setSummary(summaryText.trim()); // 前後の空白を削除
 
     } catch (err) {
       console.error("Error during summarization:", err);
@@ -877,8 +933,15 @@ ${conversationText}
                   <Alert severity="info" sx={{ mb: 1 }}>要約が生成されました。</Alert>
                 )}
                 {summary && !isSummarizing && (
-                  <Box sx={{ maxHeight: '300px', overflowY: 'auto', p: 1, border: '1px solid', borderColor: 'divider', borderRadius: 1, typography: 'body2' }}>
-                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{summary}</ReactMarkdown>
+                  // Boxに typography: 'body2' がないことを確認
+                  <Box sx={{ maxHeight: '300px', overflowY: 'auto', p: 1, border: '1px solid', borderColor: 'divider', borderRadius: 1 }}>
+                    {/* components プロパティを追加してMUIコンポーネントにマッピング */}
+                    <ReactMarkdown
+                      remarkPlugins={[remarkGfm]}
+                      components={markdownComponents}
+                    >
+                      {summary}
+                    </ReactMarkdown>
                   </Box>
                 )}
                 {!summary && !isSummarizing && !summaryError && (

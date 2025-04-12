@@ -2,8 +2,7 @@
 
 音声ファイルをアップロードし、Google Gemini API を利用して文字起こし、要約、キーワード抽出、アクションアイテム抽出を行うことができるWebアプリケーションです。文字起こし結果は編集可能で、複数の形式でダウンロードできます。
 
-![スクリーンショット](placeholder.png)
-*(ここにアプリケーションのスクリーンショットを挿入してください)*
+![スクリーンショット](/screenshot.png)
 
 ## ✨ 主な機能
 
@@ -41,8 +40,8 @@
 
 ### 前提条件
 
-*   Node.js (v18以上推奨) と npm (または yarn)
-*   Google Gemini API キー ([Google AI Studio](https://aistudio.google.com/app/apikey) などで取得)
+*   Node.js (v18以上推奨) と npm (または yarn)（[公式サイト](https://nodejs.org/ja)から取得）
+*   Google Gemini API キー ([Google AI Studio](https://aistudio.google.com/app/apikey) から取得)
 *   対応するWebブラウザ (Chrome, Firefox, Safari, Edgeなど)
 
 ### 手順
