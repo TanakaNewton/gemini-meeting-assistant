@@ -136,9 +136,7 @@ function parseTranscriptionResponse(responseText) {
 }
 
 const availableModels = [
-  { id: "gemini-1.5-pro-latest", name: "Gemini 1.5 Pro (Latest)" },
-  { id: "gemini-1.5-flash-latest", name: "Gemini 1.5 Flash (Latest)" },
-  { id: "gemini-2.5-pro-exp-03-25", name: "Gemini 2.5 Pro (Experimental)" },
+  { id: "gemini-2.5-flash-preview-05-20", name: "Gemini 2.5 Flash (Preview)" }
 ];
 
 // --- ReactMarkdown用のMUIコンポーネントマッピング ---
@@ -185,7 +183,7 @@ const markdownComponents = {
 
 function App() {
   const [apiKey, setApiKey] = useState('');
-  const [selectedModel, setSelectedModel] = useState("gemini-2.5-pro-exp-03-25");
+  const [selectedModel, setSelectedModel] = useState("gemini-2.5-flash-preview-05-20");
   const [selectedFile, setSelectedFile] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [results, setResults] = useState([]);
